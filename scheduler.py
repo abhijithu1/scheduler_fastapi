@@ -78,7 +78,10 @@ class OptimizedInterviewScheduler:
         max_time_seconds: float = 30.0,
         require_distinct_days: bool = False,
         top_k_solutions: int = 50,
-        schedule_on_same_day: bool = False
+        schedule_on_same_day: bool = True,
+        daily_availability_start: str = "09:00",
+        daily_availability_end: str = "17:00",
+        min_gap_between_stages: int = 0
     ):
         # Process input data
         self.stages = self._parse_stages(stages)
@@ -90,6 +93,9 @@ class OptimizedInterviewScheduler:
         self.require_distinct_days = require_distinct_days
         self.schedule_on_same_day = schedule_on_same_day
         self.top_k_solutions = top_k_solutions
+        self.daily_availability_start = daily_availability_start
+        self.daily_availability_end = daily_availability_end
+        self.min_gap_between_stages = min_gap_between_stages
 
         # Parse time windows
         self.availability = [
@@ -240,11 +246,11 @@ class OptimizedInterviewScheduler:
         # Constraint: stages must be in order with minimum gaps
         # Gap depends on whether we're scheduling on same day or different days
         if self.schedule_on_same_day:
-            # Same day scheduling: minimum 2-hour gaps between stages
-            MIN_GAP_MINUTES = 120
+            # Same day scheduling: use custom minimum gap or default to 2-hour gaps between stages
+            MIN_GAP_MINUTES = max(120, self.min_gap_between_stages)  # At least 2 hours unless custom gap is larger
         else:
             # Different day scheduling: minimum 24-hour gaps between stages
-            MIN_GAP_MINUTES = 24 * 60
+            MIN_GAP_MINUTES = max(24 * 60, self.min_gap_between_stages)  # At least 24 hours unless custom gap is larger
             
         for i in range(len(self.stages) - 1):
             model.Add(stage_starts[i + 1] >= stage_ends[i] + MIN_GAP_MINUTES)

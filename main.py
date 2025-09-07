@@ -45,6 +45,9 @@ class ScheduleRequest(BaseModel):
     require_distinct_days: Optional[bool] = False
     top_k_solutions: Optional[int] = 50
     schedule_on_same_day: Optional[bool] = True
+    daily_availability_start: Optional[str] = "09:00"
+    daily_availability_end: Optional[str] = "17:00"
+    min_gap_between_stages: Optional[int] = 0
 
 class ScheduleResponse(BaseModel):
     status: str
@@ -103,7 +106,10 @@ async def generate_schedule(request: ScheduleRequest):
             max_time_seconds=request.max_time_seconds,
             require_distinct_days=request.require_distinct_days,
             top_k_solutions=request.top_k_solutions,
-            schedule_on_same_day=request.schedule_on_same_day
+            schedule_on_same_day=request.schedule_on_same_day,
+            daily_availability_start=request.daily_availability_start,
+            daily_availability_end=request.daily_availability_end,
+            min_gap_between_stages=request.min_gap_between_stages
         )
         
         # Generate schedules
