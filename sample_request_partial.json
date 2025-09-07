@@ -1,0 +1,78 @@
+{
+  "stages": [
+    {
+      "stage_name": "Tech_Screen",
+      "duration": 45,
+      "seats": [
+        {
+          "seat_id": "Room_1",
+          "interviewers": {
+            "trained": ["Alex Johnson", "Maria Garcia", "James Smith"],
+            "shadow": ["Sarah Davis", "Robert Wilson", "Lisa Miller"],
+            "reverse_shadow": ["David Taylor", "Jennifer Anderson", "William Thomas"]
+          }
+        },
+        {
+          "seat_id": "Room_2",
+          "interviewers": {
+            "trained": ["Amanda Jackson", "Christopher White", "Ashley Harris"],
+            "shadow": ["Matthew Martin", "Jessica Thompson", "Daniel Robinson"],
+            "reverse_shadow": ["Nicole Lewis", "Joseph Walker", "Megan Hall"]
+          }
+        }
+      ]
+    },
+    {
+      "stage_name": "System_Design",
+      "duration": 90,
+      "seats": [
+        {
+          "seat_id": "Room_3",
+          "interviewers": {
+            "trained": ["Thomas Allen", "Rachel Young", "Andrew King"],
+            "shadow": ["Stephanie Wright", "Ryan Scott", "Lauren Green"],
+            "reverse_shadow": ["Kevin Baker", "Michelle Adams", "Brian Nelson"]
+          }
+        }
+      ]
+    },
+    {
+      "stage_name": "Behavioral",
+      "duration": 60,
+      "seats": [
+        {
+          "seat_id": "Room_4",
+          "interviewers": {
+            "trained": ["Heather Hill", "Jason Carter", "Samantha Mitchell"],
+            "shadow": ["Eric Roberts", "Brittany Turner", "Jonathan Phillips"],
+            "reverse_shadow": ["Amber Campbell", "Jeffrey Parker", "Danielle Evans"]
+          }
+        }
+      ]
+    }
+  ],
+  "availability_windows": [
+    {"start": "2025-09-01T09:00", "end": "2025-09-01T17:00"},
+    {"start": "2025-09-02T09:00", "end": "2025-09-02T17:00"},
+    {"start": "2025-09-03T09:00", "end": "2025-09-03T17:00"},
+    {"start": "2025-09-04T09:00", "end": "2025-09-04T17:00"},
+    {"start": "2025-09-05T09:00", "end": "2025-09-05T17:00"},
+    {"start": "2025-09-08T09:00", "end": "2025-09-08T17:00"},
+    {"start": "2025-09-09T09:00", "end": "2025-09-09T17:00"},
+    {"start": "2025-09-10T09:00", "end": "2025-09-10T17:00"},
+    {"start": "2025-09-11T09:00", "end": "2025-09-11T17:00"},
+    {"start": "2025-09-12T09:00", "end": "2025-09-12T17:00"}
+  ],
+  "busy_intervals": [
+    {"interviewer_id": "Alex Johnson", "start": "2025-09-02T10:00", "end": "2025-09-02T11:00"},
+    {"interviewer_id": "Maria Garcia", "start": "2025-09-03T14:00", "end": "2025-09-03T15:00"},
+    {"interviewer_id": "James Smith", "start": "2025-09-04T09:00", "end": "2025-09-04T10:30"},
+    {"interviewer_id": "Sarah Davis", "start": "2025-09-05T13:00", "end": "2025-09-05T14:00"},
+    {"interviewer_id": "Robert Wilson", "start": "2025-09-06T11:00", "end": "2025-09-06T12:00"},
+    {"interviewer_id": "Lisa Miller", "start": "2025-09-07T15:00", "end": "2025-09-07T16:00"}
+  ],
+  "weekly_limit": 3,
+  "max_time_seconds": 60.0,
+  "top_k_solutions": 5,
+  "schedule_on_same_day": false
+}

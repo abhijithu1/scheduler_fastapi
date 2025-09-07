@@ -1,0 +1,57 @@
+{
+  "stages": [
+    {
+      "stage_name": "Tech_Screen",
+      "duration": 45,
+      "seats": [
+        {
+          "seat_id": "Room_1",
+          "interviewers": {
+            "trained": ["intv_1", "intv_2", "intv_3", "intv_4", "intv_5"],
+            "shadow": ["intv_6", "intv_7", "intv_8", "intv_9", "intv_10"],
+            "reverse_shadow": ["intv_11", "intv_12", "intv_13", "intv_14", "intv_15"]
+          }
+        }
+      ]
+    },
+    {
+      "stage_name": "System_Design",
+      "duration": 90,
+      "seats": [
+        {
+          "seat_id": "Room_2",
+          "interviewers": {
+            "trained": ["intv_16", "intv_17", "intv_18", "intv_19", "intv_20"],
+            "shadow": ["intv_21", "intv_22", "intv_23", "intv_24", "intv_25"],
+            "reverse_shadow": ["intv_26", "intv_27", "intv_28", "intv_29", "intv_30"]
+          }
+        }
+      ]
+    }
+  ],
+  "availability_windows": [
+    {"start": "2025-09-01T09:00", "end": "2025-09-01T17:00"},
+    {"start": "2025-09-02T09:00", "end": "2025-09-02T17:00"},
+    {"start": "2025-09-03T09:00", "end": "2025-09-03T17:00"},
+    {"start": "2025-09-04T09:00", "end": "2025-09-04T17:00"},
+    {"start": "2025-09-05T09:00", "end": "2025-09-05T17:00"},
+    {"start": "2025-09-08T09:00", "end": "2025-09-08T17:00"},
+    {"start": "2025-09-09T09:00", "end": "2025-09-09T17:00"},
+    {"start": "2025-09-10T09:00", "end": "2025-09-10T17:00"},
+    {"start": "2025-09-11T09:00", "end": "2025-09-11T17:00"},
+    {"start": "2025-09-12T09:00", "end": "2025-09-12T17:00"},
+    {"start": "2025-09-15T09:00", "end": "2025-09-15T17:00"},
+    {"start": "2025-09-16T09:00", "end": "2025-09-16T17:00"},
+    {"start": "2025-09-17T09:00", "end": "2025-09-17T17:00"},
+    {"start": "2025-09-18T09:00", "end": "2025-09-18T17:00"},
+    {"start": "2025-09-19T09:00", "end": "2025-09-19T17:00"}
+  ],
+  "busy_intervals": [
+    {"interviewer_id": "intv_1", "start": "2025-09-02T10:00", "end": "2025-09-02T11:00"},
+    {"interviewer_id": "intv_5", "start": "2025-09-03T14:00", "end": "2025-09-03T15:00"},
+    {"interviewer_id": "intv_10", "start": "2025-09-04T09:00", "end": "2025-09-04T10:30"},
+    {"interviewer_id": "intv_15", "start": "2025-09-05T13:00", "end": "2025-09-05T14:00"},
+    {"interviewer_id": "intv_20", "start": "2025-09-08T11:00", "end": "2025-09-08T12:00"},
+    {"interviewer_id": "intv_25", "start": "2025-09-09T15:00", "end": "2025-09-09T16:00"}
+  ]
+}
