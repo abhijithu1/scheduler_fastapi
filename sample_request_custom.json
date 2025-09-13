@@ -5,11 +5,7 @@
       "duration": 45,
       "seats": [
         {
-          "seat_id": "Tech_Screen_Room_1",
-          "interviewers": {
-            "trained": ["Alex Johnson", "Maria Garcia"],
-            "shadow": ["Sarah Davis", "Robert Wilson"]
-          }
+          "seat_id": "Tech_Screen_Room_1"
         }
       ]
     },
@@ -18,11 +14,7 @@
       "duration": 90,
       "seats": [
         {
-          "seat_id": "Deep_Tech_Room_1",
-          "interviewers": {
-            "trained": ["Jason Carter", "Samantha Mitchell"],
-            "shadow": ["Amber Campbell", "Jeffrey Parker"]
-          }
+          "seat_id": "Deep_Tech_Room_1"
         }
       ]
     },
@@ -31,39 +23,73 @@
       "duration": 120,
       "seats": [
         {
-          "seat_id": "System_Design_Room_1",
-          "interviewers": {
-            "trained": ["Lauren Green", "Kevin Baker"],
-            "shadow": ["Jason Carter", "Samantha Mitchell"]
-          }
+          "seat_id": "System_Design_Room_1"
         }
       ]
     }
   ],
-  "current_week_load": {
-    "Alex Johnson": 2,
-    "Maria Garcia": 1,
-    "Sarah Davis": 1,
-    "Robert Wilson": 4,
-    "Jason Carter": 0,
-    "Samantha Mitchell": 2,
-    "Amber Campbell": 0,
-    "Jeffrey Parker": 3,
-    "Lauren Green": 3,
-    "Kevin Baker": 1
-  },
-  "last_2w_load": {
-    "Alex Johnson": 4,
-    "Maria Garcia": 3,
-    "Sarah Davis": 3,
-    "Robert Wilson": 7,
-    "Jason Carter": 1,
-    "Samantha Mitchell": 4,
-    "Amber Campbell": 2,
-    "Jeffrey Parker": 6,
-    "Lauren Green": 6,
-    "Kevin Baker": 3
-  },
+  "interviewers": [
+    {
+      "id": "Alex Johnson",
+      "current_load": 2,
+      "last2w_load": 4,
+      "mode": "trained"
+    },
+    {
+      "id": "Maria Garcia",
+      "current_load": 1,
+      "last2w_load": 3,
+      "mode": "trained"
+    },
+    {
+      "id": "Sarah Davis",
+      "current_load": 1,
+      "last2w_load": 3,
+      "mode": "shadow"
+    },
+    {
+      "id": "Robert Wilson",
+      "current_load": 4,
+      "last2w_load": 7,
+      "mode": "shadow"
+    },
+    {
+      "id": "Jason Carter",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "trained"
+    },
+    {
+      "id": "Samantha Mitchell",
+      "current_load": 2,
+      "last2w_load": 4,
+      "mode": "trained"
+    },
+    {
+      "id": "Amber Campbell",
+      "current_load": 0,
+      "last2w_load": 2,
+      "mode": "shadow"
+    },
+    {
+      "id": "Jeffrey Parker",
+      "current_load": 3,
+      "last2w_load": 6,
+      "mode": "shadow"
+    },
+    {
+      "id": "Lauren Green",
+      "current_load": 3,
+      "last2w_load": 6,
+      "mode": "trained"
+    },
+    {
+      "id": "Kevin Baker",
+      "current_load": 1,
+      "last2w_load": 3,
+      "mode": "trained"
+    }
+  ],
   "availability_windows": [
     {"start": "2025-09-01T08:00", "end": "2025-09-01T18:00"},
     {"start": "2025-09-02T08:00", "end": "2025-09-02T18:00"},

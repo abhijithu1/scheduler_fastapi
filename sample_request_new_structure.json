@@ -1,0 +1,105 @@
+{
+  "stages": [
+    {
+      "stage_name": "Initial_Tech_Screen",
+      "duration": 45,
+      "seats": [
+        {
+          "seat_id": "Tech_Screen_Room_1"
+        },
+        {
+          "seat_id": "Tech_Screen_Room_2"
+        }
+      ]
+    },
+    {
+      "stage_name": "Deep_Tech_Interview",
+      "duration": 90,
+      "seats": [
+        {
+          "seat_id": "Deep_Tech_Room_1"
+        },
+        {
+          "seat_id": "Deep_Tech_Room_2"
+        },
+        {
+          "seat_id": "Deep_Tech_Room_3"
+        }
+      ]
+    }
+  ],
+  "interviewers": [
+    {
+      "id": "Alex Johnson",
+      "current_load": 2,
+      "last2w_load": 6,
+      "mode": "trained"
+    },
+    {
+      "id": "Maria Garcia",
+      "current_load": 1,
+      "last2w_load": 3,
+      "mode": "trained"
+    },
+    {
+      "id": "James Smith",
+      "current_load": 3,
+      "last2w_load": 7,
+      "mode": "trained"
+    },
+    {
+      "id": "Sarah Davis",
+      "current_load": 1,
+      "last2w_load": 4,
+      "mode": "shadow"
+    },
+    {
+      "id": "Robert Wilson",
+      "current_load": 4,
+      "last2w_load": 8,
+      "mode": "shadow"
+    },
+    {
+      "id": "Lisa Miller",
+      "current_load": 2,
+      "last2w_load": 5,
+      "mode": "shadow"
+    },
+    {
+      "id": "William Thomas",
+      "current_load": 0,
+      "last2w_load": 2,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Amanda Jackson",
+      "current_load": 2,
+      "last2w_load": 6,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Christopher White",
+      "current_load": 1,
+      "last2w_load": 4,
+      "mode": "reverse_shadow"
+    }
+  ],
+  "availability_windows": [
+    {"start": "2025-09-01T09:00", "end": "2025-09-01T17:00"},
+    {"start": "2025-09-02T09:00", "end": "2025-09-02T17:00"},
+    {"start": "2025-09-03T09:00", "end": "2025-09-03T17:00"}
+  ],
+  "busy_intervals": [
+    {"interviewer_id": "Alex Johnson", "start": "2025-09-01T10:00", "end": "2025-09-01T11:30"},
+    {"interviewer_id": "Sarah Davis", "start": "2025-09-01T14:00", "end": "2025-09-01T15:00"}
+  ],
+  "time_step_minutes": 15,
+  "weekly_limit": 5,
+  "max_time_seconds": 30.0,
+  "require_distinct_days": false,
+  "top_k_solutions": 10,
+  "schedule_on_same_day": true,
+  "daily_availability_start": "09:00",
+  "daily_availability_end": "17:00",
+  "min_gap_between_stages": 120
+}

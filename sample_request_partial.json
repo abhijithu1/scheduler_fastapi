@@ -5,20 +5,10 @@
       "duration": 45,
       "seats": [
         {
-          "seat_id": "Room_1",
-          "interviewers": {
-            "trained": ["Alex Johnson", "Maria Garcia", "James Smith"],
-            "shadow": ["Sarah Davis", "Robert Wilson", "Lisa Miller"],
-            "reverse_shadow": ["David Taylor", "Jennifer Anderson", "William Thomas"]
-          }
+          "seat_id": "Room_1"
         },
         {
-          "seat_id": "Room_2",
-          "interviewers": {
-            "trained": ["Amanda Jackson", "Christopher White", "Ashley Harris"],
-            "shadow": ["Matthew Martin", "Jessica Thompson", "Daniel Robinson"],
-            "reverse_shadow": ["Nicole Lewis", "Joseph Walker", "Megan Hall"]
-          }
+          "seat_id": "Room_2"
         }
       ]
     },
@@ -27,12 +17,7 @@
       "duration": 90,
       "seats": [
         {
-          "seat_id": "Room_3",
-          "interviewers": {
-            "trained": ["Thomas Allen", "Rachel Young", "Andrew King"],
-            "shadow": ["Stephanie Wright", "Ryan Scott", "Lauren Green"],
-            "reverse_shadow": ["Kevin Baker", "Michelle Adams", "Brian Nelson"]
-          }
+          "seat_id": "Room_3"
         }
       ]
     },
@@ -41,14 +26,227 @@
       "duration": 60,
       "seats": [
         {
-          "seat_id": "Room_4",
-          "interviewers": {
-            "trained": ["Heather Hill", "Jason Carter", "Samantha Mitchell"],
-            "shadow": ["Eric Roberts", "Brittany Turner", "Jonathan Phillips"],
-            "reverse_shadow": ["Amber Campbell", "Jeffrey Parker", "Danielle Evans"]
-          }
+          "seat_id": "Room_4"
         }
       ]
+    }
+  ],
+  "interviewers": [
+    {
+      "id": "Alex Johnson",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "trained"
+    },
+    {
+      "id": "Maria Garcia",
+      "current_load": 1,
+      "last2w_load": 2,
+      "mode": "trained"
+    },
+    {
+      "id": "James Smith",
+      "current_load": 2,
+      "last2w_load": 3,
+      "mode": "trained"
+    },
+    {
+      "id": "Sarah Davis",
+      "current_load": 0,
+      "last2w_load": 0,
+      "mode": "shadow"
+    },
+    {
+      "id": "Robert Wilson",
+      "current_load": 1,
+      "last2w_load": 2,
+      "mode": "shadow"
+    },
+    {
+      "id": "Lisa Miller",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "shadow"
+    },
+    {
+      "id": "David Taylor",
+      "current_load": 2,
+      "last2w_load": 4,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Jennifer Anderson",
+      "current_load": 1,
+      "last2w_load": 2,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "William Thomas",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Amanda Jackson",
+      "current_load": 1,
+      "last2w_load": 2,
+      "mode": "trained"
+    },
+    {
+      "id": "Christopher White",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "trained"
+    },
+    {
+      "id": "Ashley Harris",
+      "current_load": 2,
+      "last2w_load": 3,
+      "mode": "trained"
+    },
+    {
+      "id": "Matthew Martin",
+      "current_load": 0,
+      "last2w_load": 0,
+      "mode": "shadow"
+    },
+    {
+      "id": "Jessica Thompson",
+      "current_load": 1,
+      "last2w_load": 1,
+      "mode": "shadow"
+    },
+    {
+      "id": "Daniel Robinson",
+      "current_load": 0,
+      "last2w_load": 2,
+      "mode": "shadow"
+    },
+    {
+      "id": "Nicole Lewis",
+      "current_load": 2,
+      "last2w_load": 4,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Joseph Walker",
+      "current_load": 1,
+      "last2w_load": 3,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Megan Hall",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Thomas Allen",
+      "current_load": 1,
+      "last2w_load": 2,
+      "mode": "trained"
+    },
+    {
+      "id": "Rachel Young",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "trained"
+    },
+    {
+      "id": "Andrew King",
+      "current_load": 2,
+      "last2w_load": 3,
+      "mode": "trained"
+    },
+    {
+      "id": "Stephanie Wright",
+      "current_load": 0,
+      "last2w_load": 0,
+      "mode": "shadow"
+    },
+    {
+      "id": "Ryan Scott",
+      "current_load": 1,
+      "last2w_load": 2,
+      "mode": "shadow"
+    },
+    {
+      "id": "Lauren Green",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "shadow"
+    },
+    {
+      "id": "Kevin Baker",
+      "current_load": 2,
+      "last2w_load": 4,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Michelle Adams",
+      "current_load": 1,
+      "last2w_load": 2,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Brian Nelson",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Heather Hill",
+      "current_load": 1,
+      "last2w_load": 2,
+      "mode": "trained"
+    },
+    {
+      "id": "Jason Carter",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "trained"
+    },
+    {
+      "id": "Samantha Mitchell",
+      "current_load": 2,
+      "last2w_load": 3,
+      "mode": "trained"
+    },
+    {
+      "id": "Eric Roberts",
+      "current_load": 0,
+      "last2w_load": 0,
+      "mode": "shadow"
+    },
+    {
+      "id": "Brittany Turner",
+      "current_load": 1,
+      "last2w_load": 1,
+      "mode": "shadow"
+    },
+    {
+      "id": "Jonathan Phillips",
+      "current_load": 0,
+      "last2w_load": 2,
+      "mode": "shadow"
+    },
+    {
+      "id": "Amber Campbell",
+      "current_load": 2,
+      "last2w_load": 4,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Jeffrey Parker",
+      "current_load": 1,
+      "last2w_load": 3,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Danielle Evans",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "reverse_shadow"
     }
   ],
   "availability_windows": [

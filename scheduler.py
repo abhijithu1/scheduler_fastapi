@@ -27,9 +27,17 @@ def datetime_from_minutes(minutes: int, epoch: datetime) -> datetime:
 # Data classes
 # -----------------------------
 @dataclass
+class InterviewerInfo:
+    id: str
+    current_load: int
+    last2w_load: int
+    mode: str  # "trained", "shadow", or "reverse_shadow"
+
+@dataclass
 class SeatRole:
     seat_id: str
     role: str
+    # Will now contain interviewer IDs that match the required mode
     interviewers: List[str]
 
 @dataclass
@@ -69,8 +77,7 @@ class OptimizedInterviewScheduler:
     def __init__(
         self,
         stages: List[Dict[str, Any]],
-        current_week_load: Dict[str, int],
-        last_2w_load: Dict[str, int],
+        interviewers: List[Dict[str, Any]],  # New structure: list of interviewer objects
         availability_windows: List[Dict[str, str]],
         busy_intervals: List[Dict[str, str]],
         time_step_minutes: int = 15,
@@ -84,9 +91,8 @@ class OptimizedInterviewScheduler:
         min_gap_between_stages: int = 0
     ):
         # Process input data
-        self.stages = self._parse_stages(stages)
-        self.current_load = defaultdict(int, current_week_load or {})
-        self.last_2w_load = defaultdict(int, last_2w_load or {})
+        self.interviewers = self._parse_interviewers(interviewers)  # Parse interviewers first
+        self.stages = self._parse_stages(stages)  # Then parse stages which uses interviewers
         self.time_step = time_step_minutes
         self.weekly_limit = weekly_limit
         self.max_time_seconds = max_time_seconds
@@ -123,6 +129,19 @@ class OptimizedInterviewScheduler:
         # Validate inputs
         self._validate_inputs()
 
+    def _parse_interviewers(self, interviewers_data: List[Dict[str, Any]]) -> Dict[str, InterviewerInfo]:
+        """Parse interviewer definitions"""
+        interviewers = {}
+        for interviewer_data in interviewers_data:
+            interviewer_id = interviewer_data["id"]
+            interviewers[interviewer_id] = InterviewerInfo(
+                id=interviewer_id,
+                current_load=int(interviewer_data["current_load"]),
+                last2w_load=int(interviewer_data["last2w_load"]),
+                mode=interviewer_data["mode"]
+            )
+        return interviewers
+
     def _parse_stages(self, stages_data: List[Dict[str, Any]]) -> List[Stage]:
         """Parse stage definitions with proper role normalization"""
         stages = []
@@ -130,25 +149,22 @@ class OptimizedInterviewScheduler:
             seats = []
             for seat_data in stage_data["seats"]:
                 seat_id = seat_data["seat_id"]
-                pools = seat_data["interviewers"]
-
-                # Handle each role pool - group all roles for the same seat together
-                seat_roles = {}  # role -> interviewers
                 
-                for role_key, interviewers in pools.items():
-                    # Normalize role names
-                    role = role_key.replace(" ", "_").lower()
-                    if role in ["reverse_shadow", "reverse shadow"]:
-                        role = "reverse_shadow"
+                # For each seat, we need to define pools for ALL roles
+                # We'll filter interviewers by mode for each role
+                required_roles = ["trained", "shadow", "reverse_shadow"]
+                
+                for role in required_roles:
+                    # Filter interviewers by mode
+                    role_interviewers = [
+                        interviewer.id for interviewer in self.interviewers.values() 
+                        if interviewer.mode == role
+                    ]
                     
-                    seat_roles[role] = list(interviewers)
-
-                # Create SeatRole objects for each role in this seat
-                for role, interviewers in seat_roles.items():
                     seats.append(SeatRole(
                         seat_id=seat_id,
                         role=role,
-                        interviewers=interviewers
+                        interviewers=role_interviewers
                     ))
 
             stages.append(Stage(
@@ -317,50 +333,50 @@ class OptimizedInterviewScheduler:
                     
                     # Exactly one interviewer per seat-role
                     seat_role_vars = []
-                    for interviewer in seat.interviewers:
-                        var = model.NewBoolVar(f"assign_{stage_idx}_{seat.seat_id}_{seat.role}_{interviewer}")
-                        assignment_vars[(stage_idx, seat.seat_id, seat.role, interviewer)] = var
+                    for interviewer_id in seat.interviewers:
+                        var = model.NewBoolVar(f"assign_{stage_idx}_{seat.seat_id}_{seat.role}_{interviewer_id}")
+                        assignment_vars[(stage_idx, seat.seat_id, seat.role, interviewer_id)] = var
                         seat_role_vars.append(var)
 
                         # Track if interviewer is used in this stage
-                        if (stage_idx, interviewer) not in interviewer_stage_vars:
-                            interviewer_stage_vars[(stage_idx, interviewer)] = model.NewBoolVar(
-                                f"interviewer_{interviewer}_stage_{stage_idx}"
+                        if (stage_idx, interviewer_id) not in interviewer_stage_vars:
+                            interviewer_stage_vars[(stage_idx, interviewer_id)] = model.NewBoolVar(
+                                f"interviewer_{interviewer_id}_stage_{stage_idx}"
                             )
 
                         # Link assignment to interviewer usage
-                        model.Add(interviewer_stage_vars[(stage_idx, interviewer)] >= var)
+                        model.Add(interviewer_stage_vars[(stage_idx, interviewer_id)] >= var)
 
                     model.Add(sum(seat_role_vars) == 1)
 
         # Constraint: interviewer_stage_vars must equal the sum of assignment variables
         # For each (stage, interviewer):
         for stage_idx in range(len(self.stages)):
-            for interviewer in self.all_interviewers:
-                if (stage_idx, interviewer) in interviewer_stage_vars:
+            for interviewer_id in self.all_interviewers:
+                if (stage_idx, interviewer_id) in interviewer_stage_vars:
                     vars_for_this = [
-                        assignment_vars[(stage_idx, seat.seat_id, seat.role, interviewer)]
+                        assignment_vars[(stage_idx, seat.seat_id, seat.role, interviewer_id)]
                         for seat in self.stages[stage_idx].seats
-                        if (stage_idx, seat.seat_id, seat.role, interviewer) in assignment_vars
+                        if (stage_idx, seat.seat_id, seat.role, interviewer_id) in assignment_vars
                     ]
                     if vars_for_this:
                         # interviewer_stage_var should be 1 if any assignment is 1, 0 otherwise
-                        model.Add(sum(vars_for_this) >= interviewer_stage_vars[(stage_idx, interviewer)])
-                        model.Add(sum(vars_for_this) <= len(vars_for_this) * interviewer_stage_vars[(stage_idx, interviewer)])
+                        model.Add(sum(vars_for_this) >= interviewer_stage_vars[(stage_idx, interviewer_id)])
+                        model.Add(sum(vars_for_this) <= len(vars_for_this) * interviewer_stage_vars[(stage_idx, interviewer_id)])
 
         # Constraint: interviewer can appear at most once per stage
         # More efficient grouping approach
         interviewer_usage = defaultdict(list)
         for stage_idx in range(len(self.stages)):
             for seat in self.stages[stage_idx].seats:
-                for interviewer in seat.interviewers:
-                    if (stage_idx, seat.seat_id, seat.role, interviewer) in assignment_vars:
-                        interviewer_usage[(stage_idx, interviewer)].append(
-                            assignment_vars[(stage_idx, seat.seat_id, seat.role, interviewer)]
+                for interviewer_id in seat.interviewers:
+                    if (stage_idx, seat.seat_id, seat.role, interviewer_id) in assignment_vars:
+                        interviewer_usage[(stage_idx, interviewer_id)].append(
+                            assignment_vars[(stage_idx, seat.seat_id, seat.role, interviewer_id)]
                         )
 
         # Apply constraint for each interviewer in each stage
-        for (stage_idx, interviewer), assignments in interviewer_usage.items():
+        for (stage_idx, interviewer_id), assignments in interviewer_usage.items():
             if len(assignments) > 1:
                 model.Add(sum(assignments) <= 1)
 
@@ -370,15 +386,15 @@ class OptimizedInterviewScheduler:
             stage_start = stage_starts[stage_idx]
             stage_end = stage_ends[stage_idx]
             
-            for interviewer in self.all_interviewers:
-                if (stage_idx, interviewer) not in interviewer_stage_vars:
+            for interviewer_id in self.all_interviewers:
+                if (stage_idx, interviewer_id) not in interviewer_stage_vars:
                     continue
 
-                interviewer_var = interviewer_stage_vars[(stage_idx, interviewer)]
+                interviewer_var = interviewer_stage_vars[(stage_idx, interviewer_id)]
 
                 # Check against all busy intervals for this interviewer
                 for busy_idx, busy in enumerate(self.busy_intervals):
-                    if busy.interviewer_id != interviewer:
+                    if busy.interviewer_id != interviewer_id:
                         continue
 
                     busy_start = minutes_since_epoch(busy.start, self.epoch)
@@ -387,8 +403,8 @@ class OptimizedInterviewScheduler:
                     # If interviewer is assigned to this stage, stage must not overlap with busy time
                     # No overlap means: stage_end <= busy_start OR busy_end <= stage_start
                     # Using a more compact approach with fewer variables
-                    before_busy = model.NewBoolVar(f"stage_before_busy_{interviewer}_{stage_idx}_{busy_idx}")
-                    after_busy = model.NewBoolVar(f"stage_after_busy_{interviewer}_{stage_idx}_{busy_idx}")
+                    before_busy = model.NewBoolVar(f"stage_before_busy_{interviewer_id}_{stage_idx}_{busy_idx}")
+                    after_busy = model.NewBoolVar(f"stage_after_busy_{interviewer_id}_{stage_idx}_{busy_idx}")
 
                     model.Add(stage_end <= busy_start).OnlyEnforceIf(before_busy)
                     model.Add(stage_start >= busy_end).OnlyEnforceIf(after_busy)
@@ -397,23 +413,27 @@ class OptimizedInterviewScheduler:
                     model.Add(before_busy + after_busy >= 1).OnlyEnforceIf(interviewer_var)
 
         # Constraint: weekly limits
-        for interviewer in self.all_interviewers:
-            current_load = self.current_load[interviewer]
-            assigned_stages = [
-                interviewer_stage_vars[(stage_idx, interviewer)]
-                for stage_idx in range(len(self.stages))
-                if (stage_idx, interviewer) in interviewer_stage_vars
-            ]
-            if assigned_stages:
-                model.Add(sum(assigned_stages) + current_load <= self.weekly_limit)
+        for interviewer_id in self.all_interviewers:
+            interviewer_info = self.interviewers.get(interviewer_id)
+            if interviewer_info:
+                current_load = interviewer_info.current_load
+                assigned_stages = [
+                    interviewer_stage_vars[(stage_idx, interviewer_id)]
+                    for stage_idx in range(len(self.stages))
+                    if (stage_idx, interviewer_id) in interviewer_stage_vars
+                ]
+                if assigned_stages:
+                    model.Add(sum(assigned_stages) + current_load <= self.weekly_limit)
 
         # Objective: minimize weighted assignment cost + total span
         assignment_cost = 0
-        for interviewer in self.all_interviewers:
-            weight = 1 + self.last_2w_load[interviewer]  # Fairness weight
-            for stage_idx in range(len(self.stages)):
-                if (stage_idx, interviewer) in interviewer_stage_vars:
-                    assignment_cost += weight * interviewer_stage_vars[(stage_idx, interviewer)]
+        for interviewer_id in self.all_interviewers:
+            interviewer_info = self.interviewers.get(interviewer_id)
+            if interviewer_info:
+                weight = 1 + interviewer_info.last2w_load  # Fairness weight
+                for stage_idx in range(len(self.stages)):
+                    if (stage_idx, interviewer_id) in interviewer_stage_vars:
+                        assignment_cost += weight * interviewer_stage_vars[(stage_idx, interviewer_id)]
 
         # Minimize total span (last end - first start) and assignment cost
         total_span = stage_ends[len(self.stages) - 1] - stage_starts[0]
@@ -508,10 +528,10 @@ class OptimizedInterviewScheduler:
         # Group seat roles by stage and seat for proper assignment extraction
         stage_seat_roles = defaultdict(lambda: defaultdict(dict))  # stage_idx -> seat_id -> role -> interviewer
         
-        for (stage_idx, seat_id, role, interviewer), var in assignment_vars.items():
+        for (stage_idx, seat_id, role, interviewer_id), var in assignment_vars.items():
             if solver.Value(var):
-                stage_seat_roles[stage_idx][seat_id][role] = interviewer
-                interviewer_assignments[interviewer].append({
+                stage_seat_roles[stage_idx][seat_id][role] = interviewer_id
+                interviewer_assignments[interviewer_id].append({
                     "stage": self.stages[stage_idx].name,
                     "seat_id": seat_id,
                     "role": role,
@@ -527,8 +547,8 @@ class OptimizedInterviewScheduler:
             # Extract assignments grouped by seat
             assignments = defaultdict(dict)
             for seat_id, roles in stage_seat_roles[stage_idx].items():
-                for role, interviewer in roles.items():
-                    assignments[role][seat_id] = interviewer
+                for role, interviewer_id in roles.items():
+                    assignments[role][seat_id] = interviewer_id
 
             events.append({
                 "stage_name": stage.name,
@@ -604,7 +624,19 @@ def generate_dummy_data(
     roles: List[str] = ["trained", "shadow", "reverse_shadow"]
 ):
     # Generate interviewer IDs
-    interviewers = [f"intv_{i}" for i in range(1, num_interviewers + 1)]
+    interviewer_names = [f"intv_{i}" for i in range(1, num_interviewers + 1)]
+    
+    # Generate interviewer data with attributes
+    interviewers_data = []
+    for i, name in enumerate(interviewer_names):
+        # Assign a random mode to each interviewer
+        mode = random.choice(roles)
+        interviewers_data.append({
+            "id": name,
+            "current_load": random.randint(0, 3),
+            "last2w_load": random.randint(0, 5),
+            "mode": mode
+        })
 
     # Generate stages
     stages = []
@@ -616,20 +648,11 @@ def generate_dummy_data(
         num_seats = random.randint(*seats_per_stage)
         for seat_idx in range(num_seats):
             seat_id = f"{stage_name}_seat{seat_idx+1}"
-
-            # For each seat, we need to define pools for ALL roles
-            role_interviewers = {}
-            for role in roles:
-                # Make sure we have enough interviewers for each role
-                num_candidates = min(random.randint(5, 15), len(interviewers))
-                role_interviewers[role] = random.sample(
-                    interviewers,
-                    k=num_candidates  # candidate pool per seat-role
-                )
-
+            
+            # In the new structure, we don't need to specify interviewers per seat
+            # The scheduler will filter by mode
             seats.append({
-                "seat_id": seat_id,
-                "interviewers": role_interviewers
+                "seat_id": seat_id
             })
 
         stages.append({
@@ -651,7 +674,7 @@ def generate_dummy_data(
 
     # Generate random busy intervals (each interviewer ~5–10)
     busy_intervals = []
-    for interviewer in interviewers:
+    for interviewer in interviewer_names:
         for _ in range(random.randint(5, 10)):
             day = start_date + timedelta(days=random.randint(0, num_weeks*7-1))
             if day.weekday() >= 5:
@@ -665,8 +688,4 @@ def generate_dummy_data(
                 "end": to_iso(end_time)
             })
 
-    # Current and last 2 week loads
-    current_week_load = {iv: random.randint(0, 3) for iv in interviewers}
-    last_2w_load = {iv: random.randint(0, 5) for iv in interviewers}
-
-    return stages, availability, busy_intervals, current_week_load, last_2w_load
+    return stages, interviewers_data, availability, busy_intervals

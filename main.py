@@ -15,9 +15,16 @@ app = FastAPI(
 )
 
 # Pydantic models for request/response validation
+class InterviewerInfoInput(BaseModel):
+    id: str
+    current_load: int
+    last2w_load: int
+    mode: str  # "trained", "shadow", or "reverse_shadow"
+
 class SeatRoleInput(BaseModel):
     seat_id: str
-    interviewers: Dict[str, List[str]]
+    # In the new structure, we don't need to specify interviewers per seat-role
+    # The interviewers will be filtered by mode when creating assignments
 
 class StageInput(BaseModel):
     stage_name: str
@@ -35,8 +42,7 @@ class BusyIntervalInput(BaseModel):
 
 class ScheduleRequest(BaseModel):
     stages: List[StageInput]
-    current_week_load: Optional[Dict[str, int]] = {}
-    last_2w_load: Optional[Dict[str, int]] = {}
+    interviewers: List[InterviewerInfoInput]  # New structure: list of interviewer objects
     availability_windows: List[AvailabilityWindowInput]
     busy_intervals: List[BusyIntervalInput]
     time_step_minutes: Optional[int] = 15
@@ -69,14 +75,25 @@ async def generate_schedule(request: ScheduleRequest):
             seats_data = []
             for seat in stage.seats:
                 seats_data.append({
-                    "seat_id": seat.seat_id,
-                    "interviewers": seat.interviewers
+                    "seat_id": seat.seat_id
+                    # In the new structure, we don't need to specify interviewers per seat
+                    # The scheduler will filter interviewers by mode
                 })
             
             stages_data.append({
                 "stage_name": stage.stage_name,
                 "duration": stage.duration,
                 "seats": seats_data
+            })
+        
+        # Convert interviewer data
+        interviewers_data = []
+        for interviewer in request.interviewers:
+            interviewers_data.append({
+                "id": interviewer.id,
+                "current_load": interviewer.current_load,
+                "last2w_load": interviewer.last2w_load,
+                "mode": interviewer.mode
             })
         
         availability_data = []
@@ -97,8 +114,7 @@ async def generate_schedule(request: ScheduleRequest):
         # Create scheduler instance
         scheduler = OptimizedInterviewScheduler(
             stages=stages_data,
-            current_week_load=request.current_week_load,
-            last_2w_load=request.last_2w_load,
+            interviewers=interviewers_data,  # New structure
             availability_windows=availability_data,
             busy_intervals=busy_intervals_data,
             time_step_minutes=request.time_step_minutes,
