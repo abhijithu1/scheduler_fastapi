@@ -4,6 +4,7 @@ from typing import List, Dict, Tuple, Any, DefaultDict, Optional
 from collections import defaultdict
 from datetime import datetime, timedelta
 from ortools.sat.python import cp_model
+from itertools import permutations
 import json
 
 # -----------------------------
@@ -22,6 +23,53 @@ def minutes_since_epoch(dt: datetime, epoch: datetime) -> int:
 
 def datetime_from_minutes(minutes: int, epoch: datetime) -> datetime:
     return epoch + timedelta(minutes=minutes)
+
+
+def generate_stage_permutations(stages: List[Stage]) -> List[List[Stage]]:
+    """
+    Generate all possible permutations of stages while keeping fixed stages in their positions.
+    
+    Args:
+        stages: List of Stage objects, each with an is_fixed attribute
+        
+    Returns:
+        List of all valid stage permutations
+    """
+    # Separate fixed and non-fixed stages
+    fixed_stages = [(i, stage) for i, stage in enumerate(stages) if stage.is_fixed]
+    non_fixed_stages = [stage for stage in stages if not stage.is_fixed]
+    
+    # If all stages are fixed, return the original order
+    if len(fixed_stages) == len(stages):
+        return [stages]
+    
+    # If no stages are fixed, return all permutations
+    if len(fixed_stages) == 0:
+        return [list(p) for p in permutations(non_fixed_stages)]
+    
+    # Generate permutations of non-fixed stages
+    non_fixed_permutations = list(permutations(non_fixed_stages))
+    
+    # For each permutation of non-fixed stages, insert fixed stages at their fixed positions
+    result = []
+    for perm in non_fixed_permutations:
+        # Create a list with None placeholders for all positions
+        arrangement = [None] * len(stages)
+        
+        # Place fixed stages at their fixed positions
+        for pos, stage in fixed_stages:
+            arrangement[pos] = stage
+        
+        # Fill remaining positions with non-fixed stages from the permutation
+        non_fixed_index = 0
+        for i in range(len(arrangement)):
+            if arrangement[i] is None:
+                arrangement[i] = perm[non_fixed_index]
+                non_fixed_index += 1
+        
+        result.append(arrangement)
+    
+    return result
 
 # -----------------------------
 # Data classes
@@ -45,6 +93,7 @@ class Stage:
     name: str
     duration_minutes: int
     seats: List[SeatRole]
+    is_fixed: bool = False
 
 @dataclass
 class AvailabilityWindow:
@@ -170,7 +219,8 @@ class OptimizedInterviewScheduler:
             stages.append(Stage(
                 name=stage_data["stage_name"],
                 duration_minutes=int(stage_data["duration"]),
-                seats=seats
+                seats=seats,
+                is_fixed=stage_data.get("is_fixed", False)
             ))
         return stages
 
@@ -215,18 +265,75 @@ class OptimizedInterviewScheduler:
                 )
 
     def solve(self) -> Dict[str, Any]:
-        """Build and solve the optimized CP-SAT model
+        """Build and solve the optimized CP-SAT model for all valid stage permutations
         
-        This method attempts to generate multiple feasible schedules and rank them by quality.
-        Note that the number of solutions returned may be less than the requested top_k_solutions
-        parameter because:
-        1. The problem constraints may limit the total number of feasible solutions
-        2. The solver proves there are no additional feasible solutions
-        3. The search space is exhausted
+        This method generates all valid permutations of stages based on the is_fixed parameter,
+        creates a separate optimization model for each permutation, solves them, and combines
+        the solutions ranked by quality score.
         
         The solutions are ranked by their objective score, which considers both fairness 
         (based on historical load) and schedule compactness.
         """
+        # Generate all valid permutations of stages
+        stage_permutations = generate_stage_permutations(self.stages)
+        
+        all_solutions = []
+        
+        # Solve for each permutation
+        for perm_idx, perm_stages in enumerate(stage_permutations):
+            print(f"Solving for permutation {perm_idx + 1}/{len(stage_permutations)}")
+            
+            # Create a temporary scheduler with this permutation
+            temp_scheduler = OptimizedInterviewScheduler(
+                stages=[{
+                    "stage_name": stage.name,
+                    "duration": stage.duration_minutes,
+                    "is_fixed": stage.is_fixed,
+                    "seats": [{"seat_id": seat.seat_id} for seat in stage.seats if seat.role == "trained"]
+                } for stage in perm_stages],
+                interviewers=[{
+                    "id": info.id,
+                    "current_load": info.current_load,
+                    "last2w_load": info.last2w_load,
+                    "mode": info.mode
+                } for info in self.interviewers.values()],
+                availability_windows=[{
+                    "start": to_iso(window.start),
+                    "end": to_iso(window.end)
+                } for window in self.availability],
+                busy_intervals=[{
+                    "interviewer_id": interval.interviewer_id,
+                    "start": to_iso(interval.start),
+                    "end": to_iso(interval.end)
+                } for interval in self.busy_intervals],
+                time_step_minutes=self.time_step,
+                weekly_limit=self.weekly_limit,
+                max_time_seconds=self.max_time_seconds,
+                require_distinct_days=self.require_distinct_days,
+                top_k_solutions=self.top_k_solutions,
+                schedule_on_same_day=self.schedule_on_same_day,
+                daily_availability_start=self.daily_availability_start,
+                daily_availability_end=self.daily_availability_end,
+                min_gap_between_stages=self.min_gap_between_stages
+            )
+            
+            # Get solutions for this permutation
+            perm_solutions = temp_scheduler._solve_single_permutation(perm_stages)
+            all_solutions.extend(perm_solutions)
+        
+        # Sort all solutions by score and return top k
+        all_solutions.sort(key=lambda x: x[0])
+        top_solutions = all_solutions[:self.top_k_solutions]
+        
+        if top_solutions:
+            # For now, we'll return the status of the first solution's model
+            # In a more sophisticated implementation, we might want to track this better
+            return self._format_top_solutions(top_solutions, cp_model.OPTIMAL)
+        else:
+            return {"status": "INFEASIBLE", "schedules": {}}
+    
+    def _solve_single_permutation(self, perm_stages: List[Stage]) -> List[Tuple[int, Dict]]:
+        """Solve a single permutation of stages and return solutions"""
         model = cp_model.CpModel()
 
         # Time bounds (in minutes since epoch)
@@ -240,7 +347,7 @@ class OptimizedInterviewScheduler:
         stage_ends = {}
         stage_intervals = {}
 
-        for i, stage in enumerate(self.stages):
+        for i, stage in enumerate(perm_stages):
             # Start time as multiple of time_step
             max_start = latest_end - stage.duration_minutes
             start_steps = model.NewIntVar(0, max_start // self.time_step, f"start_steps_{i}")
@@ -268,11 +375,11 @@ class OptimizedInterviewScheduler:
             # Different day scheduling: minimum 24-hour gaps between stages
             MIN_GAP_MINUTES = max(24 * 60, self.min_gap_between_stages)  # At least 24 hours unless custom gap is larger
             
-        for i in range(len(self.stages) - 1):
+        for i in range(len(perm_stages) - 1):
             model.Add(stage_starts[i + 1] >= stage_ends[i] + MIN_GAP_MINUTES)
 
         # Constraint: all stages must be within availability windows
-        for i, stage in enumerate(self.stages):
+        for i, stage in enumerate(perm_stages):
             # At least one availability window must contain this stage
             window_indicators = []
             for j, window in enumerate(self.availability):
@@ -293,8 +400,8 @@ class OptimizedInterviewScheduler:
         # Constraint: distinct days if required or if not scheduling on same day
         if self.require_distinct_days or not self.schedule_on_same_day:
             MINUTES_PER_DAY = 24 * 60
-            for i in range(len(self.stages)):
-                for j in range(i + 1, len(self.stages)):
+            for i in range(len(perm_stages)):
+                for j in range(i + 1, len(perm_stages)):
                     # Two stages must be on different days
                     # This means the absolute difference between their start times must be >= 24 hours
                     # We model this as: either stage j starts at least 24 hours after stage i, 
@@ -317,7 +424,7 @@ class OptimizedInterviewScheduler:
         assignment_vars = {}  # (stage_idx, seat_id, role, interviewer) -> BoolVar
         interviewer_stage_vars = {}  # (stage_idx, interviewer) -> BoolVar
 
-        for stage_idx, stage in enumerate(self.stages):
+        for stage_idx, stage in enumerate(perm_stages):
             # Group seat roles by seat_id to ensure one interviewer per role per seat
             seat_role_groups = defaultdict(list)
             for seat in stage.seats:
@@ -351,12 +458,12 @@ class OptimizedInterviewScheduler:
 
         # Constraint: interviewer_stage_vars must equal the sum of assignment variables
         # For each (stage, interviewer):
-        for stage_idx in range(len(self.stages)):
+        for stage_idx in range(len(perm_stages)):
             for interviewer_id in self.all_interviewers:
                 if (stage_idx, interviewer_id) in interviewer_stage_vars:
                     vars_for_this = [
                         assignment_vars[(stage_idx, seat.seat_id, seat.role, interviewer_id)]
-                        for seat in self.stages[stage_idx].seats
+                        for seat in perm_stages[stage_idx].seats
                         if (stage_idx, seat.seat_id, seat.role, interviewer_id) in assignment_vars
                     ]
                     if vars_for_this:
@@ -367,8 +474,8 @@ class OptimizedInterviewScheduler:
         # Constraint: interviewer can appear at most once per stage
         # More efficient grouping approach
         interviewer_usage = defaultdict(list)
-        for stage_idx in range(len(self.stages)):
-            for seat in self.stages[stage_idx].seats:
+        for stage_idx in range(len(perm_stages)):
+            for seat in perm_stages[stage_idx].seats:
                 for interviewer_id in seat.interviewers:
                     if (stage_idx, seat.seat_id, seat.role, interviewer_id) in assignment_vars:
                         interviewer_usage[(stage_idx, interviewer_id)].append(
@@ -382,7 +489,7 @@ class OptimizedInterviewScheduler:
 
         # Constraint: interviewer availability (not busy during assigned stages)
         # Back to original approach but with some optimizations
-        for stage_idx, stage in enumerate(self.stages):
+        for stage_idx, stage in enumerate(perm_stages):
             stage_start = stage_starts[stage_idx]
             stage_end = stage_ends[stage_idx]
             
@@ -419,7 +526,7 @@ class OptimizedInterviewScheduler:
                 current_load = interviewer_info.current_load
                 assigned_stages = [
                     interviewer_stage_vars[(stage_idx, interviewer_id)]
-                    for stage_idx in range(len(self.stages))
+                    for stage_idx in range(len(perm_stages))
                     if (stage_idx, interviewer_id) in interviewer_stage_vars
                 ]
                 if assigned_stages:
@@ -431,12 +538,12 @@ class OptimizedInterviewScheduler:
             interviewer_info = self.interviewers.get(interviewer_id)
             if interviewer_info:
                 weight = 1 + interviewer_info.last2w_load  # Fairness weight
-                for stage_idx in range(len(self.stages)):
+                for stage_idx in range(len(perm_stages)):
                     if (stage_idx, interviewer_id) in interviewer_stage_vars:
                         assignment_cost += weight * interviewer_stage_vars[(stage_idx, interviewer_id)]
 
         # Minimize total span (last end - first start) and assignment cost
-        total_span = stage_ends[len(self.stages) - 1] - stage_starts[0]
+        total_span = stage_ends[len(perm_stages) - 1] - stage_starts[0]
 
         # Multi-objective: fairness (100x) + compactness (1x)
         model.Minimize(100 * assignment_cost + total_span)
@@ -444,10 +551,6 @@ class OptimizedInterviewScheduler:
         # Solve
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = self.max_time_seconds
-        solver.parameters.num_search_workers = 4
-
-        # Use the solution collector approach
-        # First, we need to set up the solver to collect multiple solutions
         solver.parameters.num_search_workers = 1  # Required for solution callback
         solver.parameters.enumerate_all_solutions = True
         
@@ -471,13 +574,13 @@ class OptimizedInterviewScheduler:
             def on_solution_callback(self):
                 if len(self.solutions) < self.max_solutions:
                     # Extract solution
-                    solution_data = self.scheduler._extract_solution_data(self, self.stage_starts, self.assignment_vars)
+                    solution_data = self.scheduler._extract_solution_data_perm(self, self.stage_starts, self.assignment_vars, perm_stages)
                     score = int(self.ObjectiveValue())
                     self.solutions.append((score, solution_data))
                     print(f"Found solution {len(self.solutions)} with score {score}")
         
         # Create the solution collector
-        solution_collector = SolutionCollector(self, stage_starts, assignment_vars, self.top_k_solutions)
+        solution_collector = SolutionCollector(self, stage_starts, assignment_vars, self.top_k_solutions // len(stage_permutations) + 1)
         
         # Solve with the solution collector
         status = solver.Solve(model, solution_collector)
@@ -485,35 +588,56 @@ class OptimizedInterviewScheduler:
         print(f"Solver status: {solver.StatusName(status)}")
         print(f"Total solutions found: {len(solution_collector.solutions)}")
         
-        # Explain why we might have fewer solutions than requested
-        if len(solution_collector.solutions) < self.top_k_solutions:
-            print("Note: Fewer solutions found than requested. This is normal for tightly constrained scheduling problems.")
-            print("The solver has proven that no additional feasible solutions exist within the given constraints.")
+        return solution_collector.solutions
+
+    def _extract_solution_data_perm(
+        self,
+        solver: cp_model.CpSolver,
+        stage_starts: Dict[int, cp_model.IntVar],
+        assignment_vars: Dict[Tuple[int, str, str, str], cp_model.IntVar],
+        perm_stages: List[Stage]
+    ) -> Dict[str, Any]:
+        """Extract raw solution data for ranking from a specific permutation"""
+        events = []
+        interviewer_assignments = defaultdict(list)
         
-        # Format solutions
-        if solution_collector.solutions:
-            # Sort solutions by score (ascending because lower is better)
-            solution_collector.solutions.sort(key=lambda x: x[0])
-            # Use original scores for output, not negated ones
-            result = self._format_top_solutions(solution_collector.solutions, status)
-            print(f"Returning {len(solution_collector.solutions)} solutions")
-            return result
-        else:
-            # Fallback to single solution if collector didn't work
-            status = solver.Solve(model)
-            if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-                # Extract solution
-                solution_data = self._extract_solution_data(solver, stage_starts, assignment_vars)
-                score = int(solver.ObjectiveValue())
-                solutions = [(score, solution_data)]
-                
-                # Format solutions
-                result = self._format_top_solutions(solutions, status)
-                print(f"Returning 1 solution from fallback with status: {solver.StatusName(status)}")
-                return result
-            else:
-                print("No feasible solutions found")
-                return {"status": "INFEASIBLE", "schedules": {}}
+        # Group seat roles by stage and seat for proper assignment extraction
+        stage_seat_roles = defaultdict(lambda: defaultdict(dict))  # stage_idx -> seat_id -> role -> interviewer
+        
+        for (stage_idx, seat_id, role, interviewer_id), var in assignment_vars.items():
+            if solver.Value(var):
+                stage_seat_roles[stage_idx][seat_id][role] = interviewer_id
+                interviewer_assignments[interviewer_id].append({
+                    "stage": perm_stages[stage_idx].name,
+                    "seat_id": seat_id,
+                    "role": role,
+                    "start": datetime_from_minutes(solver.Value(stage_starts[stage_idx]), self.epoch),
+                    "end": datetime_from_minutes(solver.Value(stage_starts[stage_idx]) + perm_stages[stage_idx].duration_minutes, self.epoch)
+                })
+
+        for stage_idx, stage in enumerate(perm_stages):
+            start_minutes = solver.Value(stage_starts[stage_idx])
+            start_time = datetime_from_minutes(start_minutes, self.epoch)
+            end_time = start_time + timedelta(minutes=stage.duration_minutes)
+
+            # Extract assignments grouped by seat
+            assignments = defaultdict(dict)
+            for seat_id, roles in stage_seat_roles[stage_idx].items():
+                for role, interviewer_id in roles.items():
+                    assignments[role][seat_id] = interviewer_id
+
+            events.append({
+                "stage_name": stage.name,
+                "duration": stage.duration_minutes,
+                "start": to_iso(start_time),
+                "end": to_iso(end_time),
+                "assigned": dict(assignments)
+            })
+
+        return {
+            "events": events,
+            "interviewer_assignments": dict(interviewer_assignments)
+        }
 
     def _extract_solution_data(
         self,

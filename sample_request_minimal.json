@@ -3,6 +3,7 @@
     {
       "stage_name": "Tech_Screen",
       "duration": 30,
+      "is_fixed": false,
       "seats": [
         {
           "seat_id": "Room_1"

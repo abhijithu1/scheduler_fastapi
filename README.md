@@ -61,18 +61,22 @@ The API will be available at `http://localhost:8000`
       {
         "stage_name": "string",
         "duration": 0,
+        "is_fixed": false,
         "seats": [
           {
-            "seat_id": "string",
-            "interviewers": {
-              "role_name": ["interviewer_id1", "interviewer_id2"]
-            }
+            "seat_id": "string"
           }
         ]
       }
     ],
-    "current_week_load": {"interviewer_id": 0},
-    "last_2w_load": {"interviewer_id": 0},
+    "interviewers": [
+      {
+        "id": "string",
+        "current_load": 0,
+        "last2w_load": 0,
+        "mode": "trained|shadow|reverse_shadow"
+      }
+    ],
     "availability_windows": [
       {
         "start": "2025-09-01T09:00",
@@ -91,7 +95,10 @@ The API will be available at `http://localhost:8000`
     "max_time_seconds": 30.0,
     "require_distinct_days": false,
     "top_k_solutions": 50,
-    "schedule_on_same_day": true
+    "schedule_on_same_day": true,
+    "daily_availability_start": "09:00",
+    "daily_availability_end": "17:00",
+    "min_gap_between_stages": 0
   }
   ```
 
@@ -109,7 +116,13 @@ The API will be available at `http://localhost:8000`
             "start": "2025-09-01T09:00",
             "end": "2025-09-01T10:00",
             "assigned": {
-              "role_name": {
+              "trained": {
+                "seat_id": "interviewer_id"
+              },
+              "shadow": {
+                "seat_id": "interviewer_id"
+              },
+              "reverse_shadow": {
                 "seat_id": "interviewer_id"
               }
             }
@@ -162,15 +175,14 @@ Once the server is running, you can access the interactive API documentation at:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
-## Parameters
+### Parameters
 
-### ScheduleRequest Parameters
+#### ScheduleRequest Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | stages | List[StageInput] | Required | Interview stages to schedule |
-| current_week_load | Dict[str, int] | {} | Current week workload per interviewer |
-| last_2w_load | Dict[str, int] | {} | Last 2 weeks workload per interviewer |
+| interviewers | List[InterviewerInfoInput] | Required | List of interviewers with their info |
 | availability_windows | List[AvailabilityWindowInput] | Required | Time windows when interviews can be scheduled |
 | busy_intervals | List[BusyIntervalInput] | Required | Interviewer busy time intervals |
 | time_step_minutes | int | 15 | Time granularity in minutes |
@@ -179,6 +191,27 @@ Once the server is running, you can access the interactive API documentation at:
 | require_distinct_days | bool | false | Force stages on different days |
 | top_k_solutions | int | 50 | Number of solutions to generate |
 | schedule_on_same_day | bool | true | Schedule all stages on same day |
+| daily_availability_start | str | "09:00" | Daily start time for scheduling |
+| daily_availability_end | str | "17:00" | Daily end time for scheduling |
+| min_gap_between_stages | int | 0 | Minimum gap between stages in minutes |
+
+#### StageInput Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| stage_name | str | Required | Name of the interview stage |
+| duration | int | Required | Duration of the stage in minutes |
+| is_fixed | bool | false | Whether the stage position is fixed in the sequence |
+| seats | List[SeatRoleInput] | Required | Seats required for this stage |
+
+#### InterviewerInfoInput Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| id | str | Required | Unique identifier for the interviewer |
+| current_load | int | Required | Current week workload for the interviewer |
+| last2w_load | int | Required | Workload for the interviewer in the last 2 weeks |
+| mode | str | Required | Role of the interviewer: "trained", "shadow", or "reverse_shadow" |
 
 ## Error Handling
 

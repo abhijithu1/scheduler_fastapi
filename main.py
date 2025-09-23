@@ -29,6 +29,7 @@ class SeatRoleInput(BaseModel):
 class StageInput(BaseModel):
     stage_name: str
     duration: int
+    is_fixed: Optional[bool] = False
     seats: List[SeatRoleInput]
 
 class AvailabilityWindowInput(BaseModel):
@@ -83,6 +84,7 @@ async def generate_schedule(request: ScheduleRequest):
             stages_data.append({
                 "stage_name": stage.stage_name,
                 "duration": stage.duration,
+                "is_fixed": stage.is_fixed if stage.is_fixed is not None else False,
                 "seats": seats_data
             })
         

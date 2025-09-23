@@ -1,0 +1,166 @@
+{
+  "stages": [
+    {
+      "stage_name": "Initial_Tech_Screen",
+      "duration": 45,
+      "is_fixed": true,
+      "seats": [
+        {
+          "seat_id": "Tech_Screen_Room_1"
+        },
+        {
+          "seat_id": "Tech_Screen_Room_2"
+        }
+      ]
+    },
+    {
+      "stage_name": "Deep_Tech_Interview",
+      "duration": 90,
+      "is_fixed": false,
+      "seats": [
+        {
+          "seat_id": "Deep_Tech_Room_1"
+        },
+        {
+          "seat_id": "Deep_Tech_Room_2"
+        },
+        {
+          "seat_id": "Deep_Tech_Room_3"
+        }
+      ]
+    },
+    {
+      "stage_name": "System_Design",
+      "duration": 120,
+      "is_fixed": true,
+      "seats": [
+        {
+          "seat_id": "System_Design_Room_1"
+        },
+        {
+          "seat_id": "System_Design_Room_2"
+        }
+      ]
+    },
+    {
+      "stage_name": "Behavioral_Interview",
+      "duration": 60,
+      "is_fixed": false,
+      "seats": [
+        {
+          "seat_id": "Behavioral_Room_1"
+        }
+      ]
+    }
+  ],
+  "interviewers": [
+    {
+      "id": "Alex Johnson",
+      "current_load": 2,
+      "last2w_load": 4,
+      "mode": "trained"
+    },
+    {
+      "id": "Maria Garcia",
+      "current_load": 1,
+      "last2w_load": 3,
+      "mode": "trained"
+    },
+    {
+      "id": "James Smith",
+      "current_load": 3,
+      "last2w_load": 6,
+      "mode": "trained"
+    },
+    {
+      "id": "Emily Chen",
+      "current_load": 0,
+      "last2w_load": 2,
+      "mode": "trained"
+    },
+    {
+      "id": "Michael Brown",
+      "current_load": 2,
+      "last2w_load": 5,
+      "mode": "trained"
+    },
+    {
+      "id": "Sarah Davis",
+      "current_load": 1,
+      "last2w_load": 3,
+      "mode": "shadow"
+    },
+    {
+      "id": "Robert Wilson",
+      "current_load": 4,
+      "last2w_load": 7,
+      "mode": "shadow"
+    },
+    {
+      "id": "Lisa Miller",
+      "current_load": 2,
+      "last2w_load": 4,
+      "mode": "shadow"
+    },
+    {
+      "id": "David Taylor",
+      "current_load": 1,
+      "last2w_load": 2,
+      "mode": "shadow"
+    },
+    {
+      "id": "Jennifer Anderson",
+      "current_load": 3,
+      "last2w_load": 5,
+      "mode": "shadow"
+    },
+    {
+      "id": "William Thomas",
+      "current_load": 0,
+      "last2w_load": 1,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Amanda Jackson",
+      "current_load": 2,
+      "last2w_load": 4,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Christopher White",
+      "current_load": 1,
+      "last2w_load": 3,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Ashley Harris",
+      "current_load": 3,
+      "last2w_load": 6,
+      "mode": "reverse_shadow"
+    },
+    {
+      "id": "Matthew Martin",
+      "current_load": 2,
+      "last2w_load": 4,
+      "mode": "reverse_shadow"
+    }
+  ],
+  "availability_windows": [
+    {"start": "2025-09-01T09:00", "end": "2025-09-01T17:00"},
+    {"start": "2025-09-02T09:00", "end": "2025-09-02T17:00"},
+    {"start": "2025-09-03T09:00", "end": "2025-09-03T17:00"},
+    {"start": "2025-09-04T09:00", "end": "2025-09-04T17:00"},
+    {"start": "2025-09-05T09:00", "end": "2025-09-05T17:00"}
+  ],
+  "busy_intervals": [
+    {"interviewer_id": "Alex Johnson", "start": "2025-09-01T10:00", "end": "2025-09-01T11:30"},
+    {"interviewer_id": "Maria Garcia", "start": "2025-09-01T14:00", "end": "2025-09-01T15:00"},
+    {"interviewer_id": "James Smith", "start": "2025-09-01T11:00", "end": "2025-09-01T12:30"}
+  ],
+  "time_step_minutes": 15,
+  "weekly_limit": 5,
+  "max_time_seconds": 30.0,
+  "require_distinct_days": false,
+  "top_k_solutions": 10,
+  "schedule_on_same_day": true
+}
