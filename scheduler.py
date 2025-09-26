@@ -10,6 +10,10 @@ import json
 # -----------------------------
 # Utilities
 # -----------------------------
+
+# -----------------------------
+# Utilities
+# -----------------------------
 ISO_FMT = "%Y-%m-%dT%H:%M"
 
 def parse_iso(s: str) -> datetime:
@@ -276,49 +280,16 @@ class OptimizedInterviewScheduler:
         """
         # Generate all valid permutations of stages
         stage_permutations = generate_stage_permutations(self.stages)
+        num_permutations = len(stage_permutations)
         
         all_solutions = []
         
         # Solve for each permutation
         for perm_idx, perm_stages in enumerate(stage_permutations):
-            print(f"Solving for permutation {perm_idx + 1}/{len(stage_permutations)}")
-            
-            # Create a temporary scheduler with this permutation
-            temp_scheduler = OptimizedInterviewScheduler(
-                stages=[{
-                    "stage_name": stage.name,
-                    "duration": stage.duration_minutes,
-                    "is_fixed": stage.is_fixed,
-                    "seats": [{"seat_id": seat.seat_id} for seat in stage.seats if seat.role == "trained"]
-                } for stage in perm_stages],
-                interviewers=[{
-                    "id": info.id,
-                    "current_load": info.current_load,
-                    "last2w_load": info.last2w_load,
-                    "mode": info.mode
-                } for info in self.interviewers.values()],
-                availability_windows=[{
-                    "start": to_iso(window.start),
-                    "end": to_iso(window.end)
-                } for window in self.availability],
-                busy_intervals=[{
-                    "interviewer_id": interval.interviewer_id,
-                    "start": to_iso(interval.start),
-                    "end": to_iso(interval.end)
-                } for interval in self.busy_intervals],
-                time_step_minutes=self.time_step,
-                weekly_limit=self.weekly_limit,
-                max_time_seconds=self.max_time_seconds,
-                require_distinct_days=self.require_distinct_days,
-                top_k_solutions=self.top_k_solutions,
-                schedule_on_same_day=self.schedule_on_same_day,
-                daily_availability_start=self.daily_availability_start,
-                daily_availability_end=self.daily_availability_end,
-                min_gap_between_stages=self.min_gap_between_stages
-            )
+            print(f"Solving for permutation {perm_idx + 1}/{num_permutations}")
             
             # Get solutions for this permutation
-            perm_solutions = temp_scheduler._solve_single_permutation(perm_stages)
+            perm_solutions = self._solve_single_permutation(perm_stages, num_permutations)
             all_solutions.extend(perm_solutions)
         
         # Sort all solutions by score and return top k
@@ -332,7 +303,7 @@ class OptimizedInterviewScheduler:
         else:
             return {"status": "INFEASIBLE", "schedules": {}}
     
-    def _solve_single_permutation(self, perm_stages: List[Stage]) -> List[Tuple[int, Dict]]:
+    def _solve_single_permutation(self, perm_stages: List[Stage], num_permutations: int) -> List[Tuple[int, Dict]]:
         """Solve a single permutation of stages and return solutions"""
         model = cp_model.CpModel()
 
@@ -580,7 +551,8 @@ class OptimizedInterviewScheduler:
                     print(f"Found solution {len(self.solutions)} with score {score}")
         
         # Create the solution collector
-        solution_collector = SolutionCollector(self, stage_starts, assignment_vars, self.top_k_solutions // len(stage_permutations) + 1)
+        solutions_per_permutation = max(1, self.top_k_solutions // num_permutations)
+        solution_collector = SolutionCollector(self, stage_starts, assignment_vars, solutions_per_permutation)
         
         # Solve with the solution collector
         status = solver.Solve(model, solution_collector)
