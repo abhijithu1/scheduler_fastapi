@@ -130,8 +130,8 @@ async def generate_schedule(request: ScheduleRequest):
             min_gap_between_stages=request.min_gap_between_stages
         )
         
-        # Generate schedules
-        result = scheduler.solve()
+        # Generate schedules using the two-phase approach (now the default)
+        result = scheduler.solve_with_two_phase_approach()
         
         return ScheduleResponse(**result)
         

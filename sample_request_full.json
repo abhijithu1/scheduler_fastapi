@@ -3,6 +3,7 @@
     {
       "stage_name": "Initial_Tech_Screen",
       "duration": 45,
+      "is_fixed": true,
       "seats": [
         {
           "seat_id": "Tech_Screen_Room_1"
@@ -15,6 +16,7 @@
     {
       "stage_name": "Deep_Tech_Interview",
       "duration": 90,
+      "is_fixed": false,
       "seats": [
         {
           "seat_id": "Deep_Tech_Room_1"
@@ -30,6 +32,7 @@
     {
       "stage_name": "System_Design",
       "duration": 120,
+      "is_fixed": false,
       "seats": [
         {
           "seat_id": "System_Design_Room_1"
@@ -42,6 +45,7 @@
     {
       "stage_name": "Behavioral_Interview",
       "duration": 60,
+      "is_fixed": false,
       "seats": [
         {
           "seat_id": "Behavioral_Room_1"
@@ -51,6 +55,7 @@
     {
       "stage_name": "Leadership_Round",
       "duration": 90,
+      "is_fixed": true,
       "seats": [
         {
           "seat_id": "Leadership_Room_1"

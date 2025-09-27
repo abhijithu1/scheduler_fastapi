@@ -111,7 +111,7 @@ class BusyInterval:
     end: datetime
 
 # -----------------------------
-# Optimized Scheduler
+# Two-Phase Optimized Scheduler
 # -----------------------------
 class OptimizedInterviewScheduler:
     """
@@ -284,13 +284,22 @@ class OptimizedInterviewScheduler:
         
         all_solutions = []
         
+        # Calculate how many solutions we still need to find
+        remaining_solutions = self.top_k_solutions
+        
         # Solve for each permutation
         for perm_idx, perm_stages in enumerate(stage_permutations):
             print(f"Solving for permutation {perm_idx + 1}/{num_permutations}")
             
-            # Get solutions for this permutation
-            perm_solutions = self._solve_single_permutation(perm_stages, num_permutations)
+            # Get solutions for this permutation, limiting to how many we still need
+            perm_solutions = self._solve_single_permutation(perm_stages, remaining_solutions)
             all_solutions.extend(perm_solutions)
+            
+            # Update how many more solutions we need
+            remaining_solutions = max(0, self.top_k_solutions - len(all_solutions))
+            
+            # If we already have enough solutions, potentially stop early (depending on implementation)
+            # Note: We'll still process all permutations to be thorough, but we could optimize this later
         
         # Sort all solutions by score and return top k
         all_solutions.sort(key=lambda x: x[0])
@@ -302,9 +311,191 @@ class OptimizedInterviewScheduler:
             return self._format_top_solutions(top_solutions, cp_model.OPTIMAL)
         else:
             return {"status": "INFEASIBLE", "schedules": {}}
+
+    def solve_with_two_phase_approach(self) -> Dict[str, Any]:
+        """
+        Two-phase scheduling approach (now the default approach):
+        
+        Phase 1: Generate initial schedule using only trained interviewers
+        Phase 2: Enrich the existing schedule with shadowers and reverse shadowers
+        """
+        print("Starting Phase 1: Initial schedule with trained interviewers only")
+        
+        # Create a modified version of stages that only includes seats relevant for trained interviewers
+        original_stages = self.stages
+        temp_stages = []
+        
+        for stage in self.stages:
+            # Create new seats list with only unique seat_ids (for trained interviewers)
+            # Group seats by seat_id to avoid duplicates, but only consider trained roles
+            seat_id_to_trained_interviewers = {}
+            for seat in stage.seats:
+                if seat.role == "trained":
+                    if seat.seat_id not in seat_id_to_trained_interviewers:
+                        seat_id_to_trained_interviewers[seat.seat_id] = []
+                    seat_id_to_trained_interviewers[seat.seat_id].extend(seat.interviewers)
+            
+            # Create SeatRole objects for the phase 1 with only trained interviewers
+            trained_seats = []
+            for seat_id, trained_interviewers in seat_id_to_trained_interviewers.items():
+                trained_seats.append(SeatRole(
+                    seat_id=seat_id,
+                    role="trained",  # Only marked as trained for this phase
+                    interviewers=trained_interviewers
+                ))
+            
+            temp_stage = Stage(
+                name=stage.name,
+                duration_minutes=stage.duration_minutes,
+                seats=trained_seats,
+                is_fixed=stage.is_fixed
+            )
+            temp_stages.append(temp_stage)
+        
+        # Temporarily replace stages for phase 1
+        self.stages = temp_stages
+        
+        # Create filtered interviewers (only trained)
+        original_interviewers = self.interviewers
+        filtered_interviewers = {
+            iv_id: iv_info for iv_id, iv_info in self.interviewers.items() 
+            if iv_info.mode == "trained"
+        }
+        
+        # Update all_interviewers to match filtered ones
+        original_all_interviewers = self.all_interviewers
+        self.interviewers = filtered_interviewers
+        self.all_interviewers = sorted(filtered_interviewers.keys())
+        
+        # Solve for initial schedules with trained interviewers only
+        phase1_result = self.solve()
+        
+        # Restore original data after phase 1
+        self.stages = original_stages
+        self.interviewers = original_interviewers
+        self.all_interviewers = original_all_interviewers
+        
+        if phase1_result["status"] not in ["OPTIMAL", "FEASIBLE"]:
+            return {"status": "INFEASIBLE", "schedules": {}}
+        
+        # Get ALL schedules from phase 1, not just the best one
+        phase1_schedules = phase1_result.get("schedules", {})
+        
+        if not phase1_schedules:
+            return {"status": "INFEASIBLE", "schedules": {}}
+        
+        # Phase 2: Enrich ALL schedules with shadowers and reverse shadowers
+        print("Starting Phase 2: Enriching schedules with shadowers and reverse shadowers")
+        enriched_schedules = {}
+        
+        # Process each schedule from phase 1
+        for schedule_key, initial_schedule in phase1_schedules.items():
+            enriched_schedule = self._enrich_schedule_with_shadowers(initial_schedule)
+            
+            # Get the enriched schedule from the returned dict
+            if "schedules" in enriched_schedule and enriched_schedule["schedules"]:
+                # Use the same key to maintain consistency
+                for enriched_key, enriched_data in enriched_schedule["schedules"].items():
+                    enriched_schedules[schedule_key] = enriched_data
+            else:
+                # If enrichment failed for some reason, keep the original
+                enriched_schedules[schedule_key] = initial_schedule
+        
+        # Return all enriched schedules
+        return {
+            "status": phase1_result["status"],
+            "schedules": enriched_schedules
+        }
+
+    def _get_best_schedule(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract the best schedule from the result"""
+        if result["schedules"]:
+            # Get the schedule with the lowest score (best)
+            best_schedule_key = min(result["schedules"].keys(), 
+                                  key=lambda k: result["schedules"][k]["score"])
+            best_schedule = result["schedules"][best_schedule_key]
+            best_schedule["schedule_key"] = best_schedule_key
+            return best_schedule
+        return {}
     
-    def _solve_single_permutation(self, perm_stages: List[Stage], num_permutations: int) -> List[Tuple[int, Dict]]:
+    def _enrich_schedule_with_shadowers(self, initial_schedule: Dict[str, Any]) -> Dict[str, Any]:
+        """Enrich the initial schedule with shadowers and reverse shadowers"""
+        # Create a deep copy of the initial schedule
+        import copy
+        enriched_schedule = copy.deepcopy(initial_schedule)
+        
+        # Get all the shadowers and reverse shadowers from the original data
+        shadowers = {iv_id: iv_info for iv_id, iv_info in self.interviewers.items() 
+                     if iv_info.mode in ["shadow", "reverse_shadow"]}
+        
+        # Extract busy intervals per interviewer to respect their availability
+        iv_busy_intervals = defaultdict(list)
+        for busy_interval in self.busy_intervals:
+            iv_busy_intervals[busy_interval.interviewer_id].append(busy_interval)
+        
+        # Go through each event in the schedule and try to assign shadowers and reverse shadowers
+        for event_idx, event in enumerate(enriched_schedule.get("events", [])):
+            stage_name = event["stage_name"]
+            event_start = parse_iso(event["start"])
+            event_end = parse_iso(event["end"])
+            
+            # Find all available shadowers and reverse shadowers for this time slot
+            available_shadowers = self._find_available_interviewers(
+                shadowers, 
+                event_start, 
+                event_end, 
+                iv_busy_intervals
+            )
+            
+            # Add shadowers and reverse shadowers to the event assignments
+            for role in ["shadow", "reverse_shadow"]:
+                # Get role-specific available interviewers
+                role_available = {iv_id: iv_info for iv_id, iv_info in available_shadowers.items() 
+                                if iv_info.mode == role}
+                
+                # Get all seats that currently have trained interviewers
+                trained_assignments = event.get("assigned", {}).get("trained", {})
+                
+                # Assign one shadower/reverse shadower per seat if possible
+                for seat_id in trained_assignments.keys():
+                    if role_available and seat_id not in event.get("assigned", {}).get(role, {}):
+                        # Assign one available interviewer to this seat
+                        assigned_iv = next(iter(role_available.keys()))  # Get first key
+                        del role_available[assigned_iv]  # Remove from available
+                        
+                        if role not in event["assigned"]:
+                            event["assigned"][role] = {}
+                        event["assigned"][role][seat_id] = assigned_iv
+        
+        return {
+            "status": "OPTIMAL",
+            "schedules": {"schedule1": enriched_schedule}
+        }
+    
+    def _find_available_interviewers(self, interviewers: Dict[str, InterviewerInfo], 
+                                   event_start: datetime, event_end: datetime,
+                                   iv_busy_intervals: DefaultDict[str, List[BusyInterval]]) -> Dict[str, InterviewerInfo]:
+        """Find interviewers that are available during the specified time slot"""
+        available = {}
+        for iv_id, iv_info in interviewers.items():
+            # Check if the interviewer is busy during this time slot
+            is_available = True
+            for busy_interval in iv_busy_intervals.get(iv_id, []):
+                # Check for overlap between event and busy interval
+                if not (event_end <= busy_interval.start or busy_interval.end <= event_start):
+                    is_available = False
+                    break
+            
+            if is_available:
+                available[iv_id] = iv_info
+        
+        return available
+
+    
+    
+    def _solve_single_permutation(self, perm_stages: List[Stage], max_solutions_needed: int) -> List[Tuple[int, Dict]]:
         """Solve a single permutation of stages and return solutions"""
+        # Find the primary optimal solution first
         model = cp_model.CpModel()
 
         # Time bounds (in minutes since epoch)
@@ -519,7 +710,12 @@ class OptimizedInterviewScheduler:
         # Multi-objective: fairness (100x) + compactness (1x)
         model.Minimize(100 * assignment_cost + total_span)
 
-        # Solve
+        # Try to find multiple diverse solutions using iterative approach
+        all_solutions = []
+        objective_values = set()  # Keep track of unique objective values found
+        num_solutions_found = 0
+        
+        # First, try using the solution callback approach
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = self.max_time_seconds
         solver.parameters.num_search_workers = 1  # Required for solution callback
@@ -529,21 +725,18 @@ class OptimizedInterviewScheduler:
         # Increase the time limit to allow for more exploration
         solver.parameters.max_time_in_seconds = self.max_time_seconds * 2
         
-        # Create a list to store solutions
-        solutions = []
-        
         # Define a callback class to collect solutions
         class SolutionCollector(cp_model.CpSolverSolutionCallback):
-            def __init__(self, scheduler, stage_starts, assignment_vars, max_solutions):
+            def __init__(self, scheduler, stage_starts, assignment_vars, max_solutions_needed):
                 cp_model.CpSolverSolutionCallback.__init__(self)
                 self.scheduler = scheduler
                 self.stage_starts = stage_starts
                 self.assignment_vars = assignment_vars
-                self.max_solutions = max_solutions
+                self.max_solutions_needed = max_solutions_needed
                 self.solutions = []
                 
             def on_solution_callback(self):
-                if len(self.solutions) < self.max_solutions:
+                if len(self.solutions) < self.max_solutions_needed:
                     # Extract solution
                     solution_data = self.scheduler._extract_solution_data_perm(self, self.stage_starts, self.assignment_vars, perm_stages)
                     score = int(self.ObjectiveValue())
@@ -551,16 +744,32 @@ class OptimizedInterviewScheduler:
                     print(f"Found solution {len(self.solutions)} with score {score}")
         
         # Create the solution collector
-        solutions_per_permutation = max(1, self.top_k_solutions // num_permutations)
-        solution_collector = SolutionCollector(self, stage_starts, assignment_vars, solutions_per_permutation)
+        solution_collector = SolutionCollector(self, stage_starts, assignment_vars, max_solutions_needed)
         
         # Solve with the solution collector
         status = solver.Solve(model, solution_collector)
         
-        print(f"Solver status: {solver.StatusName(status)}")
-        print(f"Total solutions found: {len(solution_collector.solutions)}")
+        print(f"Initial solver status: {solver.StatusName(status)}")
+        print(f"Initial solutions found: {len(solution_collector.solutions)}")
         
-        return solution_collector.solutions
+        # If we found solutions with the callback, use those
+        if solution_collector.solutions:
+            all_solutions.extend(solution_collector.solutions)
+            num_solutions_found = len(solution_collector.solutions)
+        else:
+            # If callback didn't work well, try the single solution approach
+            solver = cp_model.CpSolver()
+            status = solver.Solve(model)
+            
+            if status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
+                solution_data = self._extract_solution_data_perm(solver, stage_starts, assignment_vars, perm_stages)
+                score = int(solver.ObjectiveValue())
+                all_solutions.append((score, solution_data))
+                print(f"Found solution {len(all_solutions)} with score {score}")
+                num_solutions_found = 1
+        
+        print(f"Total solutions found for this permutation: {len(all_solutions)}")
+        return all_solutions
 
     def _extract_solution_data_perm(
         self,

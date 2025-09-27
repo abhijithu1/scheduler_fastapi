@@ -3,6 +3,7 @@
     {
       "stage_name": "Tech_Screen",
       "duration": 45,
+      "is_fixed": false,
       "seats": [
         {
           "seat_id": "Room_1"
@@ -15,6 +16,7 @@
     {
       "stage_name": "System_Design",
       "duration": 90,
+      "is_fixed": false,
       "seats": [
         {
           "seat_id": "Room_3"
@@ -24,6 +26,7 @@
     {
       "stage_name": "Behavioral",
       "duration": 60,
+      "is_fixed": false,
       "seats": [
         {
           "seat_id": "Room_4"
@@ -269,8 +272,13 @@
     {"interviewer_id": "Robert Wilson", "start": "2025-09-06T11:00", "end": "2025-09-06T12:00"},
     {"interviewer_id": "Lisa Miller", "start": "2025-09-07T15:00", "end": "2025-09-07T16:00"}
   ],
+  "time_step_minutes": 15,
   "weekly_limit": 3,
   "max_time_seconds": 60.0,
+  "require_distinct_days": false,
   "top_k_solutions": 5,
-  "schedule_on_same_day": false
+  "schedule_on_same_day": false,
+  "daily_availability_start": "09:00",
+  "daily_availability_end": "17:00",
+  "min_gap_between_stages": 120
 }
